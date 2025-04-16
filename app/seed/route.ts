@@ -1,11 +1,14 @@
+// 导入必要的依赖
 import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import { invoices, customers, revenue, users } from '../lib/placeholder-data';
 
+// 创建PostgreSQL数据库连接，启用SSL
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
+// 初始化用户表并插入种子数据
 async function seedUsers() {
-  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+  // 创建用户表，包含id、姓名、邮箱和密码字段
   await sql`
     CREATE TABLE IF NOT EXISTS users (
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -15,6 +18,7 @@ async function seedUsers() {
     );
   `;
 
+  // 批量插入用户数据，对密码进行哈希处理
   const insertedUsers = await Promise.all(
     users.map(async (user) => {
       const hashedPassword = await bcrypt.hash(user.password, 10);
@@ -29,9 +33,9 @@ async function seedUsers() {
   return insertedUsers;
 }
 
+// 初始化发票表并插入种子数据
 async function seedInvoices() {
-  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
+  // 创建发票表，包含id、客户id、金额、状态和日期字段
   await sql`
     CREATE TABLE IF NOT EXISTS invoices (
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -42,6 +46,7 @@ async function seedInvoices() {
     );
   `;
 
+  // 批量插入发票数据
   const insertedInvoices = await Promise.all(
     invoices.map(
       (invoice) => sql`
@@ -55,9 +60,9 @@ async function seedInvoices() {
   return insertedInvoices;
 }
 
+// 初始化客户表并插入种子数据
 async function seedCustomers() {
-  await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
-
+  // 创建客户表，包含id、姓名、邮箱和头像URL字段
   await sql`
     CREATE TABLE IF NOT EXISTS customers (
       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -67,6 +72,7 @@ async function seedCustomers() {
     );
   `;
 
+  // 批量插入客户数据
   const insertedCustomers = await Promise.all(
     customers.map(
       (customer) => sql`
@@ -80,7 +86,9 @@ async function seedCustomers() {
   return insertedCustomers;
 }
 
+// 初始化收入表并插入种子数据
 async function seedRevenue() {
+  // 创建收入表，包含月份和收入金额字段
   await sql`
     CREATE TABLE IF NOT EXISTS revenue (
       month VARCHAR(4) NOT NULL UNIQUE,
@@ -88,6 +96,7 @@ async function seedRevenue() {
     );
   `;
 
+  // 批量插入收入数据
   const insertedRevenue = await Promise.all(
     revenue.map(
       (rev) => sql`
@@ -101,8 +110,12 @@ async function seedRevenue() {
   return insertedRevenue;
 }
 
+// 处理GET请求，初始化数据库并填充种子数据
 export async function GET() {
   try {
+    // 启用UUID扩展
+    await sql`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`;
+    
     const result = await sql.begin((sql) => [
       seedUsers(),
       seedCustomers(),
