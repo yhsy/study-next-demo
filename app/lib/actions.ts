@@ -17,19 +17,19 @@ const getDB = () => {
   if (process.env.POSTGRES_URL) {
     return postgres(process.env.POSTGRES_URL, { ssl: 'require' });
   }
-  
+
   // 返回一个模拟的数据库对象
   const mockSql = (strings: TemplateStringsArray, ...values: any[]): Promise<any[]> => {
     console.log('模拟SQL查询:', { strings, values });
     return Promise.resolve([]);
   };
-  
+
   return mockSql as unknown as ReturnType<typeof postgres>;
 };
 
 // 使用函数而不是直接创建连接
 const sql = getDB();
- 
+
 // 定义发票表单的验证Schema
 const FormSchema = z.object({
   id: z.string(),                              // 发票ID，字符串类型
@@ -38,10 +38,10 @@ const FormSchema = z.object({
   status: z.enum(['pending', 'paid']),         // 状态，限定为'pending'或'paid'
   date: z.string(),                            // 日期，字符串类型
 });
- 
+
 // 创建新发票时使用的Schema，省略id和date字段
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
- 
+
 // 创建新发票的服务端操作函数
 export async function createInvoice(formData: FormData) {
   try {
@@ -73,4 +73,26 @@ export async function createInvoice(formData: FormData) {
     }
     throw error;
   }
+}
+
+// 编辑发票
+const UpdateInvoice = FormSchema.omit({ id: true, date: true });
+
+export async function updateInvoice(id: string, formData: FormData) {
+  const { customerId, amount, status } = UpdateInvoice.parse({
+    customerId: formData.get('customerId'),
+    amount: formData.get('amount'),
+    status: formData.get('status'),
+  });
+
+  const amountInCents = amount * 100;
+
+  await sql`
+    UPDATE invoices
+    SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
+    WHERE id = ${id}
+  `;
+
+  revalidatePath('/dashboard/invoices');
+  redirect('/dashboard/invoices');
 }
