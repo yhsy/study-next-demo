@@ -18,5 +18,5 @@ export default NextAuth(authConfig).auth;
 
 // // 只对 /api/customers/ 路径应用中间件
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)','/api/customers/:path*'],
+  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$|.*\\.jpg$).*)','/api/customers/:path*'],
 }; 
