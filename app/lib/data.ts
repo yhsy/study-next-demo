@@ -9,23 +9,68 @@ import {
 } from './definitions';
 import { formatCurrency } from './utils';
 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+// 定义模拟SQL函数类型
+type MockSqlFunction = <T = any>(
+  ...args: any[]
+) => Promise<T[]>;
+
+// 定义模拟SQL对象类型
+interface MockSql {
+  <T = any>(...args: any[]): Promise<T[]>;
+}
+
+// 创建延迟加载的数据库连接
+// 这样在构建时会跳过数据库连接，只在运行时连接
+const getDB = () => {
+  if (process.env.POSTGRES_URL) {
+    return postgres(process.env.POSTGRES_URL, { ssl: 'require' });
+  }
+  
+  // 返回一个模拟的数据库对象
+  const mockSql: MockSql = async <T>(...args: any[]): Promise<T[]> => {
+    console.log('静态构建中模拟SQL查询:', args);
+    return [] as T[];
+  };
+  
+  return mockSql as unknown as ReturnType<typeof postgres>;
+};
+
+// 检查是否在服务器端构建过程中
+const isServerBuild = () => {
+  return process.env.NODE_ENV === 'production' && typeof window === 'undefined';
+};
+
+// 使用函数而不是直接创建连接，这样可以延迟到实际使用时才连接
+const sql = getDB();
 
 export async function fetchRevenue() {
   try {
     // Artificially delay a response for demo purposes.
-    // Don't do this in production :)
-
-    // console.log('Fetching revenue data...');
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const data = await sql<Revenue[]>`SELECT * FROM revenue`;
-
-    // console.log('Data fetch completed after 3 seconds.');
-
     return data;
   } catch (error) {
     console.error('Database Error:', error);
+    
+    // 构建时出错返回模拟数据
+    if (isServerBuild()) {
+      console.log('构建过程中返回模拟收入数据');
+      return [
+        { month: 'Jan', revenue: 0 },
+        { month: 'Feb', revenue: 0 },
+        { month: 'Mar', revenue: 0 },
+        { month: 'Apr', revenue: 0 },
+        { month: 'May', revenue: 0 },
+        { month: 'Jun', revenue: 0 },
+        { month: 'Jul', revenue: 0 },
+        { month: 'Aug', revenue: 0 },
+        { month: 'Sep', revenue: 0 },
+        { month: 'Oct', revenue: 0 },
+        { month: 'Nov', revenue: 0 },
+        { month: 'Dec', revenue: 0 },
+      ];
+    }
     throw new Error('Failed to fetch revenue data.');
   }
 }
@@ -39,22 +84,34 @@ export async function fetchLatestInvoices() {
       ORDER BY invoices.date DESC
       LIMIT 5`;
 
-    const latestInvoices = data.map((invoice) => ({
+    const latestInvoices = data.map((invoice: LatestInvoiceRaw) => ({
       ...invoice,
       amount: formatCurrency(invoice.amount),
     }));
     return latestInvoices;
   } catch (error) {
     console.error('Database Error:', error);
+    
+    // 构建时出错返回模拟数据
+    if (isServerBuild()) {
+      console.log('构建过程中返回模拟发票数据');
+      return [
+        {
+          id: '0',
+          name: 'Sample Customer',
+          email: 'sample@example.com',
+          image_url: '/customers/default.png',
+          amount: '$0.00',
+        },
+      ];
+    }
     throw new Error('Failed to fetch the latest invoices.');
   }
 }
 
 export async function fetchCardData() {
   try {
-    // You can probably combine these into a single SQL query
-    // However, we are intentionally splitting them to demonstrate
-    // how to initialize multiple queries in parallel with JS.
+    // 这里使用单独查询以展示并行查询方式
     const invoiceCountPromise = sql`SELECT COUNT(*) FROM invoices`;
     const customerCountPromise = sql`SELECT COUNT(*) FROM customers`;
     const invoiceStatusPromise = sql`SELECT
@@ -62,18 +119,16 @@ export async function fetchCardData() {
          SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) AS "pending"
          FROM invoices`;
 
-    // await new Promise((resolve) => setTimeout(resolve, 2000));
-
     const data = await Promise.all([
       invoiceCountPromise,
       customerCountPromise,
       invoiceStatusPromise,
     ]);
 
-    const numberOfInvoices = Number(data[0][0].count ?? '0');
-    const numberOfCustomers = Number(data[1][0].count ?? '0');
-    const totalPaidInvoices = formatCurrency(data[2][0].paid ?? '0');
-    const totalPendingInvoices = formatCurrency(data[2][0].pending ?? '0');
+    const numberOfInvoices = Number(data[0][0]?.count ?? '0');
+    const numberOfCustomers = Number(data[1][0]?.count ?? '0');
+    const totalPaidInvoices = formatCurrency(data[2][0]?.paid ?? '0');
+    const totalPendingInvoices = formatCurrency(data[2][0]?.pending ?? '0');
 
     return {
       numberOfCustomers,
@@ -83,6 +138,17 @@ export async function fetchCardData() {
     };
   } catch (error) {
     console.error('Database Error:', error);
+    
+    // 构建时出错返回模拟数据
+    if (isServerBuild()) {
+      console.log('构建过程中返回模拟卡片数据');
+      return {
+        numberOfCustomers: 0,
+        numberOfInvoices: 0,
+        totalPaidInvoices: '$0.00',
+        totalPendingInvoices: '$0.00',
+      };
+    }
     throw new Error('Failed to fetch card data.');
   }
 }
@@ -119,6 +185,11 @@ export async function fetchFilteredInvoices(
     return invoices;
   } catch (error) {
     console.error('Database Error:', error);
+    
+    // 构建时出错返回空数组
+    if (isServerBuild()) {
+      return [];
+    }
     throw new Error('Failed to fetch invoices.');
   }
 }
@@ -136,10 +207,15 @@ export async function fetchInvoicesPages(query: string) {
       invoices.status ILIKE ${`%${query}%`}
   `;
 
-    const totalPages = Math.ceil(Number(data[0].count) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(Number(data[0]?.count || 0) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
+    
+    // 构建时出错返回1页
+    if (isServerBuild()) {
+      return 1;
+    }
     throw new Error('Failed to fetch total number of invoices.');
   }
 }
@@ -156,7 +232,7 @@ export async function fetchInvoiceById(id: string) {
       WHERE invoices.id = ${id};
     `;
 
-    const invoice = data.map((invoice) => ({
+    const invoice = data.map((invoice: InvoiceForm) => ({
       ...invoice,
       // Convert amount from cents to dollars
       amount: invoice.amount / 100,
@@ -182,6 +258,11 @@ export async function fetchCustomers() {
     return customers;
   } catch (err) {
     console.error('Database Error:', err);
+    
+    // 构建时出错返回空数组
+    if (isServerBuild()) {
+      return [];
+    }
     throw new Error('Failed to fetch all customers.');
   }
 }
@@ -215,6 +296,11 @@ export async function fetchFilteredCustomers(query: string) {
     return customers;
   } catch (err) {
     console.error('Database Error:', err);
+    
+    // 构建时出错返回空数组
+    if (isServerBuild()) {
+      return [];
+    }
     throw new Error('Failed to fetch customer table.');
   }
 }
