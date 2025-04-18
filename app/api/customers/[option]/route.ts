@@ -127,11 +127,13 @@ interface OptionParams {
 // GET 处理函数
 export async function GET(
   request: NextRequest,
-  context: { params: OptionParams }
+  context: { params: Promise<OptionParams> | OptionParams }
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const { option } = context.params;
+    // 等待 params Promise 解析完成
+    const params = await context.params;
+    const option = params.option;
 
     switch (option) {
       case 'list':
@@ -159,10 +161,13 @@ export async function GET(
 // POST 处理函数
 export async function POST(
   request: NextRequest,
-  context: { params: OptionParams }
+  context: { params: Promise<OptionParams> | OptionParams }
 ) {
   try {
-    const { option } = context.params;
+    // 等待 params Promise 解析完成
+    const params = await context.params;
+    const option = params.option;
+    
     let result = {};
 
     switch (option) {
