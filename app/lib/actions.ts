@@ -161,7 +161,7 @@ export async function updateInvoice(
 
 export async function deleteInvoice(id: string) {
   // 删除-触发错误（演示用）
-  throw new Error('Failed to Delete Invoice');
+  // throw new Error('Failed to Delete Invoice');
   // 删除发票代码
   try {
     await sql`DELETE FROM invoices WHERE id = ${id}`;
