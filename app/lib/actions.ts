@@ -7,6 +7,9 @@ import postgres from 'postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import { signIn } from '@/auth';
+import { AuthError } from 'next-auth';
+
 // 检查是否在服务器端构建过程中
 const isServerBuild = () => {
   return process.env.NODE_ENV === 'production' && typeof window === 'undefined';
@@ -53,6 +56,25 @@ export type State = {
   };
   message?: string | null;
 };
+
+export async function authenticate(
+  prevState: string | undefined,
+  formData: FormData,
+) {
+  try {
+    await signIn('credentials', formData);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      switch (error.type) {
+        case 'CredentialsSignin':
+          return 'Invalid credentials.';
+        default:
+          return 'Something went wrong.';
+      }
+    }
+    throw error;
+  }
+}
 
 // 创建新发票时使用的Schema，省略id和date字段
 const CreateInvoice = FormSchema.omit({ id: true, date: true });
