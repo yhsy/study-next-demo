@@ -57,21 +57,56 @@ export type State = {
   message?: string | null;
 };
 
+export type AuthState = {
+  success: boolean;
+  errorMsg?: string;
+} | undefined;
+
 export async function authenticate(
-  prevState: string | undefined,
-  formData: FormData,
-) {
+  prevState: AuthState, // 上一个状态，由 useActionState 提供
+  formData: FormData,   // 表单数据
+): Promise<AuthState> { // 返回包含成功状态或错误信息的状态
   try {
-    await signIn('credentials', formData);
+    // 从表单数据中提取邮箱和密码
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    // 从表单数据中提取回调 URL，如果不存在则默认为 '/dashboard'
+    const callbackUrl = formData.get('redirectTo') as string | undefined; // 注意：前端传的是 redirectTo
+
+    // 调用 next-auth 的 signIn 函数进行凭证验证
+    // 传入 'credentials' 表示使用凭证提供者
+    // 传入 email, password 和重定向目标 redirectTo
+    // 这将触发 next-auth 的内部流程，进行凭证验证，如果严重通过那就会挑战到 /dashboard,验证失败就会去catch，跑出错误
+    await signIn('credentials', { email, password, redirectTo: callbackUrl || '/dashboard' });
+
   } catch (error) {
+    // 捕获认证过程中可能发生的错误
+    // console.log('认证错误:', error); // 在服务器端记录错误信息，便于调试
+
+    // 检查错误是否是 NextAuth 定义的 AuthError 类型
     if (error instanceof AuthError) {
+      // 处理特定的认证错误类型
       switch (error.type) {
         case 'CredentialsSignin':
-          return 'Invalid credentials.';
+          // 如果是凭证登录失败（例如，邮箱或密码错误）
+          return {
+            success: false,
+            errorMsg: '账号或密码错误' // 返回具体的错误信息给前端
+          };
         default:
-          return 'Something went wrong.';
+          // 处理其他类型的 AuthError
+          return {
+            success: false,
+            errorMsg: '登录错误，请稍后再试' // 返回一个通用的错误信息
+          };
       }
     }
+
+    // 如果捕获到的错误不是 AuthError 类型，
+    // 它可能是 Next.js 内部用于处理重定向的 NEXT_REDIRECT 错误，
+    // 或者其他预料之外的错误。
+    // 将这些错误重新抛出，让 Next.js 或上层调用栈来处理它们。
+    // 这是正确处理 NEXT_REDIRECT 以完成页面跳转的关键。
     throw error;
   }
 }
