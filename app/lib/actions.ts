@@ -77,7 +77,8 @@ export async function authenticate(
     // 传入 'credentials' 表示使用凭证提供者
     // 传入 email, password 和重定向目标 redirectTo
     // 这将触发 next-auth 的内部流程，进行凭证验证，如果严重通过那就会挑战到 /dashboard,验证失败就会去catch，跑出错误
-    await signIn('credentials', { email, password, redirectTo: callbackUrl || '/dashboard' });
+    // await signIn('credentials', { email, password, redirectTo: callbackUrl || '/dashboard' });
+    await signIn('credentials', { email, password, redirectTo: callbackUrl || '/home' });
 
   } catch (error) {
     // 捕获认证过程中可能发生的错误
