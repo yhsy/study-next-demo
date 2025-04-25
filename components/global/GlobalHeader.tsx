@@ -1,3 +1,5 @@
+"use client";
+
 import Image from 'next/image';
 
 import { Avatar, Dropdown } from 'antd';
@@ -36,7 +38,6 @@ const GlobalHeader = () => {
                       console.error('登出请求失败:', error);
                     }
                   },
-                  // danger: true, // 使用 Ant Design 的危险按钮样式
                 },
               ],
             }}
@@ -49,7 +50,6 @@ const GlobalHeader = () => {
                 className="mr-2 cursor-pointer"
               />
               <span>admin</span>
-
             </div>
 
           </Dropdown>
