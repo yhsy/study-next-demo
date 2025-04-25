@@ -1,6 +1,7 @@
 "use client";
 
 import Image from 'next/image';
+import Link from 'next/link';
 
 import { Avatar, Dropdown } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons'; // 添加登出图标
@@ -8,10 +9,10 @@ import { LogoutOutlined } from '@ant-design/icons'; // 添加登出图标
 const GlobalHeader = () => {
     return (
         <div className='flex justify-between items-center px-6 h-full'>
-        <div className='flex items-center gap-2'>
+        <Link className='flex items-center gap-2' href={'/home'}>
           <Image src="/logo.png" width={30} height={30} alt="logo" />
           <div className='text-lg font-semibold'>Skinsout</div>
-        </div>
+        </Link>
         <div className='flex items-center'>
           <Dropdown
             menu={{

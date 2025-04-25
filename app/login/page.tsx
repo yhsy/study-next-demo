@@ -16,7 +16,7 @@ function LoginFormContent() {
   const [isLoading, setIsLoading] = useState(true); // 添加加载状态(等客户端渲染完成,不然就显示Loading)
 
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/dashboard';
+  const callbackUrl = searchParams.get('callbackUrl') || '/home';
   // 更新状态变量名称和类型注解(React 19新方法)
   // authState 是一个状态变量，用于存储服务器动作的响应。
   // formAction 是一个函数，用于触发服务器动作。
