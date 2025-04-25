@@ -191,8 +191,10 @@ export async function updateInvoice(
   } catch (error) {
     console.error('更新发票错误:', error);
   }
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
+  // revalidatePath('/dashboard/invoices');
+  // redirect('/dashboard/invoices');
+  revalidatePath('/home/invoices');
+  redirect('/home/invoices');
 }
 
 export async function deleteInvoice(id: string) {
